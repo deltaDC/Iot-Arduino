@@ -1,65 +1,163 @@
+#include <WiFi.h>          // For WiFi connection
+#include <PubSubClient.h>   // For MQTT
 #include <DHT.h>
-#define DHT22_PIN 23
-#define LDR_PIN 2
-#define LED_PIN 4
 
+#define DHT22_PIN 23
+#define LDR_PIN 32           // Keep using GPIO2 (D2)
+#define LED_PIN 5
+#define LED_PIN_2 18
+#define LED_PIN_3 19
+
+// DHT sensor
 DHT dht22(DHT22_PIN, DHT22);
+
+// WiFi and MQTT settings
+const char* ssid = "Duc Chinh Viettel";          // Replace with your WiFi network name
+const char* password = "ducchinh13122003";  // Replace with your WiFi password
+const char* mqtt_server = "192.168.1.146"; // Replace with your laptop's IP address (MQTT broker)
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(2000);
+    Serial.println("WiFi not connected");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP()); // Print the IP address
+}
+
+String generateRandomClientId() {
+  String clientId = "ESP32Client-";
+  clientId += String(random(10000)); // Append a random number
+  return clientId;
+}
+
+void reconnect() {
+  while (!client.connected()) {
+    Serial.println("Attempting MQTT connection...");
+    String clientId = generateRandomClientId();
+    Serial.print("Attempting MQTT connection with ID: ");
+    Serial.println(clientId);
+    
+    // Print WiFi status
+    Serial.print("WiFi status: ");
+    Serial.println(WiFi.status());
+    Serial.println(WiFi.localIP());
+
+    // Attempt to connect
+    if (client.connect(clientId.c_str())) {
+      Serial.println("Connected to MQTT broker");
+    } else {
+      Serial.print("Failed, rc=");
+      Serial.print(client.state());
+      Serial.print(" (");
+      Serial.print(getMqttErrorMessage(client.state()));
+      Serial.println(")");
+      delay(5000);
+    }
+  }
+}
+
+String getMqttErrorMessage(int code) {
+  switch (code) {
+    case -1: return "Connect failed";
+    case -2: return "Connect failed, no network";
+    case -3: return "Connect failed, invalid protocol";
+    case -4: return "Connect failed, invalid client ID";
+    case -5: return "Connect failed, invalid credentials";
+    case -6: return "Connect failed, invalid topic";
+    case -7: return "Connect failed, invalid payload";
+    case -8: return "Connect failed, invalid QoS";
+    case -9: return "Connect failed, invalid retain flag";
+    default: return "Unknown error";
+  }
+}
 
 void setup() {
   Serial.begin(9600);
-  dht22.begin(); // initialize the DHT22 sensor
+  dht22.begin(); // Initialize the DHT22 sensor
   pinMode(LED_PIN, OUTPUT);
+  pinMode(LED_PIN_2, OUTPUT);
+  pinMode(LED_PIN_3, OUTPUT);
+
+  setup_wifi();            // Connect to WiFi
+  client.setServer(mqtt_server, 1883);  // Set MQTT broker
 }
 
 void loop() {
-  // Blink LED
-  Serial.println("LED high voltage");
-  digitalWrite(LED_PIN, HIGH);
-  delay(1000); // LED on for 1 second
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
 
-  // Read humidity
+  // Add delay to avoid conflict with WiFi operations
+  delay(100); // Short delay before reading analog values
+
+  // Read humidity and temperature
   float humi = dht22.readHumidity();
-  // Read temperature in Celsius
   float tempC = dht22.readTemperature();
-  // Read temperature in Fahrenheit
-  float tempF = dht22.readTemperature(true);
 
+  // Check if the sensor readings are valid
+  if (isnan(humi) || isnan(tempC)) {
+    Serial.println("Failed to read from DHT22 sensor!");
+    return; // Skip this loop iteration if readings are invalid
+  }
+
+  // Read light sensor value
   int lightValue = analogRead(LDR_PIN);
+
+  // Verify the lightValue range
+  if (lightValue < 0 || lightValue > 4095) {
+    Serial.println("Invalid light value");
+    lightValue = 0; // Reset to a default value if out of range
+  }
+
   lightValue = 4095 - lightValue;
 
-  float maxLux = 1000.0; // Replace this with the maximum lux value you measured
-  float maxAdcValue = 4095.0; // The max ADC value for ESP32's 12-bit ADC
+  // Calculate lux value
+  float maxLux = 1000.0;
+  float maxAdcValue = 4095.0;
+  float luxValue = (maxLux / maxAdcValue) * lightValue;
 
-  float luxValue = (maxLux / maxAdcValue) * lightValue - 500;
+  // Create JSON payload
+  String payload = "{\"name\":\"DHT22 and LDR\", \"data\": {"
+                   "\"temperature\":{\"value\":" + String(tempC) + ",\"unit\":\"Celsius\"},"
+                   "\"humidity\":{\"value\":" + String(humi) + ",\"unit\":\"Percentage\"},"
+                   "\"brightness\":{\"value\":" + String(luxValue) + ",\"unit\":\"Lux\"}}}";
 
-  // Check whether the reading is successful or not
-  if (isnan(tempC) || isnan(tempF) || isnan(humi)) {
-    Serial.println("Failed to read from DHT22 sensor!");
-  } else {
-    Serial.print("Humidity: ");
-    Serial.print(humi);
-    Serial.print("%");
+  Serial.println("Publishing MQTT message: ");
+  Serial.println(payload);
 
-    Serial.print("  |  ");
 
-    Serial.print("Temperature: ");
-    Serial.print(tempC);
-    Serial.print("°C  ~  ");
-    Serial.print(tempF);
-    Serial.println("°F");
-  }
-  Serial.println("-----------------------------");
-  if (isnan(luxValue)) {
-    Serial.println("Failed to read from LDR sensor!");
-  } else {
-    Serial.print("Lux Value is: ");
-    Serial.print(luxValue);
-    Serial.println("");
-  }
-
-  delay(5000); // Delay before next loop iteration
-
-  Serial.println("LED low voltage");
+  Serial.println("LED1 high voltage");
+  digitalWrite(LED_PIN, HIGH);
+  delay(1000);
   digitalWrite(LED_PIN, LOW);
-  delay(1000); // LED off for 1 second
+
+  Serial.println("LED2 high voltage");
+  digitalWrite(LED_PIN_2, HIGH);
+  delay(1000);
+  digitalWrite(LED_PIN_2, LOW);
+
+  Serial.println("LED3 high voltage");
+  digitalWrite(LED_PIN_3, HIGH);
+  delay(1000);
+  digitalWrite(LED_PIN_3, LOW);
+
+  // Publish to the MQTT topic
+  client.publish("iot-data", payload.c_str());
+
+  delay(5000); // Wait 5 seconds before sending next reading
 }
