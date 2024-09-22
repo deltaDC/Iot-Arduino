@@ -12,9 +12,9 @@
 DHT dht22(DHT22_PIN, DHT22);
 
 // WiFi and MQTT settings
-const char* ssid = "Duc Chinh Viettel";          // Replace with your WiFi network name
+const char* ssid = "Duc Chinh";          // Replace with your WiFi network name
 const char* password = "ducchinh13122003";  // Replace with your WiFi password
-const char* mqtt_server = "192.168.1.159"; // Replace with your laptop's IP address (MQTT broker)
+const char* mqtt_server = "192.168.1.12"; // Replace with your laptop's IP address (MQTT broker)
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -183,8 +183,8 @@ void loop() {
                    "\"humidity\":{\"value\":" + String(humi) + ",\"unit\":\"Percentage\"},"
                    "\"brightness\":{\"value\":" + String(luxValue) + ",\"unit\":\"Lux\"}}}";
 
-  // Serial.println("Publishing MQTT message: ");
-  // Serial.println(payload);
+  Serial.println("Publishing MQTT message: ");
+  Serial.println(payload);
 
   // Publish to the MQTT topic
   client.publish("iot-data", payload.c_str());
