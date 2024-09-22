@@ -14,7 +14,9 @@ DHT dht22(DHT22_PIN, DHT22);
 // WiFi and MQTT settings
 const char* ssid = "Duc Chinh";          // Replace with your WiFi network name
 const char* password = "ducchinh13122003";  // Replace with your WiFi password
-const char* mqtt_server = "192.168.1.12"; // Replace with your laptop's IP address (MQTT broker)
+const char* mqtt_server = "192.168.1.14"; // Replace with your laptop's IP address (MQTT broker)
+const char* mqtt_username = "b21dccn181"; // Replace with your MQTT username
+const char* mqtt_password = "b21dccn181"; // Replace with your MQTT password
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -101,7 +103,7 @@ void reconnect() {
     Serial.println(WiFi.localIP());
 
     // Attempt to connect
-    if (client.connect(clientId.c_str())) {
+    if (client.connect(clientId.c_str(), mqtt_username, mqtt_password)) {
       Serial.println("Connected to MQTT broker");
       client.subscribe("led/control");  // Subscribe to the control topic
     } else {
@@ -138,7 +140,7 @@ void setup() {
   pinMode(LED_PIN_3, OUTPUT);
 
   setup_wifi();            // Connect to WiFi
-  client.setServer(mqtt_server, 1883);  // Set MQTT broker
+  client.setServer(mqtt_server, 1884);  // Set MQTT broker
   client.setCallback(callback);         // Set callback function
 }
 
