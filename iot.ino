@@ -12,22 +12,20 @@
 DHT dht22(DHT22_PIN, DHT22);
 
 // WiFi and MQTT settings
-const char* ssid = "Duc Chinh";          // Replace with your WiFi network name
-const char* password = "ducchinh13122003";  // Replace with your WiFi password
-const char* mqtt_server = "192.168.1.14"; // Replace with your laptop's IP address (MQTT broker)
-const char* mqtt_username = "b21dccn181"; // Replace with your MQTT username
-const char* mqtt_password = "b21dccn181"; // Replace with your MQTT password
+const char* ssid = "Duc Chinh";         
+const char* password = "ducchinh13122003";  
+const char* mqtt_server = "192.168.1.14"; 
+const char* mqtt_username = "b21dccn181"; 
+const char* mqtt_password = "b21dccn181";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-// Add this function to publish the LED state
 void publishLedState(int ledPin, const char* ledName, bool state) {
   String payload = "{\"led\":\"" + String(ledName) + "\", \"state\":\"" + (state ? "ON" : "OFF") + "\"}";
   client.publish("led/status", payload.c_str());
 }
 
-// Update your callback function like this
 void callback(char* topic, byte* payload, unsigned int length) {
   // Convert payload to a String
   String message;
