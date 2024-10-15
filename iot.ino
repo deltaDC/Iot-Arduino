@@ -14,7 +14,7 @@ DHT dht22(DHT22_PIN, DHT22);
 // WiFi and MQTT settings
 const char* ssid = "Duc Chinh";        
 const char* password = "ducchinh13122003"; 
-const char* mqtt_server = "192.168.1.93"; 
+const char* mqtt_server = "192.168.1.179"; 
 const char* mqtt_username = "b21dccn181"; 
 const char* mqtt_password = "b21dccn181";
 
@@ -223,14 +223,14 @@ void loop() {
     float maxAdcValue = 4095.0;
     float luxValue = (maxLux / maxAdcValue) * lightValue;
 
-    float someData = random(0, 101);
+    float wind = random(0, 101);
 
     // Create JSON payload
     String payload = "{\"name\":\"DHT22 and LDR\", \"data\": {"
                      "\"temperature\":{\"value\":" + String(tempC) + ",\"unit\":\"Celsius\"},"
                      "\"humidity\":{\"value\":" + String(humi) + ",\"unit\":\"Percentage\"},"
                      "\"brightness\":{\"value\":" + String(luxValue) + ",\"unit\":\"Lux\"},"
-                     "\"someData\":{\"value\":" + String(someData) + ",\"unit\":\"Unit\"}}}";
+                     "\"wind\":{\"value\":" + String(wind) + ",\"unit\":\"Unit\"}}}";
 
     Serial.println("Publishing MQTT message: ");
     Serial.println(payload);
